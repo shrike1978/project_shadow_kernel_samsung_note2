@@ -42,6 +42,9 @@
 #include <linux/mm_inline.h>
 #endif /* CONFIG_ZRAM_FOR_ANDROID */
 #define ENHANCED_LMK_ROUTINE
+#include <linux/memory.h>
+#include <linux/memory_hotplug.h>
+#include <linux/compaction.h>
 
 #ifdef ENHANCED_LMK_ROUTINE
 #define LOWMEM_DEATHPENDING_DEPTH 3
@@ -98,6 +101,8 @@ static struct task_struct *lowmem_deathpending[LOWMEM_DEATHPENDING_DEPTH] = {NUL
 static struct task_struct *lowmem_deathpending;
 #endif
 static unsigned long lowmem_deathpending_timeout;
+extern int compact_nodes(void);
+static uint32_t lowmem_check_filepages = 0;
 
 #define lowmem_print(level, x...)			\
 	do {						\
@@ -314,7 +319,9 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 #endif
 	lowmem_print(4, "lowmem_shrink %lu, %x, return %d\n",
 		     sc->nr_to_scan, sc->gfp_mask, rem);
-	read_unlock(&tasklist_lock);
+	rcu_read_unlock();
+	if (selected)
+		compact_nodes();
 	return rem;
 }
 
